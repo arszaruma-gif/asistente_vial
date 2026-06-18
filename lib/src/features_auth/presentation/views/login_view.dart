@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // 🛠️ NUEVO: Importamos provider
+import '../controllers/auth_notifier.dart'; // 🛠️ NUEVO: Importamos el controlador
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -8,18 +10,21 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  final _emailController = TextEditingController();
+  final _cedulaController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _cedulaController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // 🛠️ CAPTURAMOS EL NOTIFIER PARA HACER LA VALIDACIÓN REAL CONTRA HIVE
+    final authNotifier = context.watch<AuthNotifier>();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -49,13 +54,13 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 40),
 
-              // Campo de Correo Electrónico
+              // Campo de Número de Cédula
               TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+                controller: _cedulaController,
+                keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Correo Electrónico',
-                  prefixIcon: Icon(Icons.email_outlined),
+                  labelText: 'Número de Cédula',
+                  prefixIcon: Icon(Icons.badge_outlined),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -73,14 +78,48 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 30),
 
-              // AQUÍ ESTÁ EL BOTÓN MODIFICADO PARA ENTRAR DIRECTO AL DRAWER
+              // BOTÓN CON COMPROBACIÓN REAL
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Bypass directo: Ignora el servidor y abre la pantalla 3 (/home)
-                    Navigator.pushReplacementNamed(context, '/home');
+                  onPressed: () async {
+                    final cedula = _cedulaController.text.trim();
+                    final password = _passwordController.text.trim();
+
+                    // 1. Candado inicial: Campos vacíos
+                    if (cedula.isEmpty || password.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('❌ Error: Ingrese su número de cédula y contraseña.'),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return; 
+                    }
+
+                    // 2. 🔒 CANDADO DEFINITIVO: Verificar si existe en Hive
+                    try {
+                      // Llama al método login del repositorio que configuramos antes
+                      await authNotifier.login(cedula, password);
+                      
+                      // Si la cédula y contraseña coinciden, pasas al Home
+                      if (context.mounted) {
+                        Navigator.pushReplacementNamed(context, '/home');
+                      }
+                    } catch (e) {
+                      // Si pusiste cualquier dato falso, salta este error naranja
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('❌ Cédula o contraseña incorrectas. Intente de nuevo.'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A237E),

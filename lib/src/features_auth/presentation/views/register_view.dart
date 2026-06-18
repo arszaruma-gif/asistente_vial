@@ -11,9 +11,11 @@ class RegisterView extends StatefulWidget {
 
 class _RegisterViewState extends State<RegisterView> {
   // Controladores básicos
+  final _nameController = TextEditingController(); // 🛠️ NUEVO: Controlador para el Nombre y Apellido
   final _cedulaController = TextEditingController();
   final _plateController = TextEditingController();
   final _sectorController = TextEditingController();
+  final _passwordController = TextEditingController(); 
 
   // Estados del Formulario Basados en tu Diseño
   DateTime? _selectedDate;
@@ -34,9 +36,11 @@ class _RegisterViewState extends State<RegisterView> {
 
   @override
   void dispose() {
+    _nameController.dispose(); // 🛠️ NUEVO: Liberamos la memoria del nuevo controlador
     _cedulaController.dispose();
     _plateController.dispose();
     _sectorController.dispose();
+    _passwordController.dispose(); 
     super.dispose();
   }
 
@@ -90,6 +94,19 @@ class _RegisterViewState extends State<RegisterView> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // 👤 0. Nombre y Apellido (NUEVO: Añadido al inicio del formulario)
+            TextField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Nombre y Apellido',
+                hintText: 'Ingresa tus nombres completos',
+                prefixIcon: Icon(Icons.person_outline),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // 1. Sector de Domicilio (Autocomplete)
             InputDecorator(
@@ -236,6 +253,19 @@ class _RegisterViewState extends State<RegisterView> {
             ),
             const SizedBox(height: 16),
 
+            // 8.5 Campo de Contraseña
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'CREA TU CONTRASEÑA',
+                hintText: 'Mínimo 6 caracteres',
+                prefixIcon: Icon(Icons.lock_outline),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // 9. Tipo de Licencia (Dropdown)
             DropdownButtonFormField<String>(
               value: _selectedLicenseType,
@@ -281,9 +311,35 @@ class _RegisterViewState extends State<RegisterView> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  // Aquí se conectaría con tu backend a través del authNotifier
-                  Navigator.pushReplacementNamed(context, '/traffic-map');
+                onPressed: () async {
+                  final name = _nameController.text.trim(); // 🛠️ NUEVO
+                  final cedula = _cedulaController.text.trim();
+                  final plate = _plateController.text.trim();
+                  final password = _passwordController.text.trim();
+
+                  // 🔒 CANDADO DE SEGURIDAD ACTUALIZADO:
+                  if (name.isEmpty || cedula.isEmpty || plate.isEmpty || password.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('❌ Error: Nombre, Cédula, Placa y Contraseña son obligatorios.'),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return; 
+                  }
+
+                  // 🚀 MODIFICADO: Enviamos el "name" capturado dinámicamente en lugar del texto fijo
+                  await authNotifier.register(
+                    name, 
+                    cedula, 
+                    password, 
+                    plate,
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pushReplacementNamed(context, '/home');
+                  }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                 icon: const Icon(Icons.directions_car, color: Colors.white),

@@ -1,7 +1,7 @@
-import 'package:asitente_vial/src/features_auth/data/datasources/auth_remote_datasource.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:hive_flutter/hive_flutter.dart'; 
 
 import './core/theme/app_theme.dart';
 import './src/features_auth/data/datasources/auth_remote_datasource.dart';
@@ -11,15 +11,23 @@ import './src/features_auth/domain/usecases/register_driver_usecase.dart';
 import './src/features_auth/presentation/controllers/auth_notifier.dart';
 import './src/features_auth/presentation/views/login_view.dart';
 import './src/features_auth/presentation/views/register_view.dart';
-import './src/features_auth/presentation/views/home_view.dart'; // Tu Pantalla 3 con Menu Drawer
+import './src/features_auth/presentation/views/home_view.dart'; 
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 🚀 Inicializamos la base de datos interna del celular (Hive)
+  await Hive.initFlutter();
+  await Hive.openBox('registros_offline');
+
+  // 🛠️ INSTANCIAS DE CAPA DE DATOS
   final httpClient = http.Client();
   final remoteDataSource = AuthRemoteDataSource(httpClient);
-  final authRepository = AuthRepositoryImpl(remoteDataSource);
-  
+
+  // 🛠️ ¡CORREGIDO!: Pasamos el remoteDataSource tal como lo espera tu constructor real
+  final authRepository = AuthRepositoryImpl(remoteDataSource); 
+
+  // 🛠️ CASOS DE USO
   final loginUseCase = LoginDriverUseCase(authRepository);
   final registerUseCase = RegisterDriverUseCase(authRepository);
 
@@ -46,14 +54,13 @@ class QuitoTrafficApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       initialRoute: '/login',
       
-      // Requerimiento: Pantalla 1, 2 y 3 mapeadas en rutas conocidas
       routes: {
         '/login': (context) => const LoginView(),
         '/register': (context) => const RegisterView(),
         '/home': (context) => const HomeView(), 
+        '/traffic-map': (context) => const HomeView(), 
       },
 
-      // Requerimiento: Controlar si una pantalla o ruta NO EXISTE
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
           builder: (context) => Scaffold(
